@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 export default function LendForm() {
     const [chain, setChain] = useState(CHAINS[0].id);
-    const [token, setToken] = useState(TOKENS[0].symbol);
+    const [token, setToken] = useState<string>(TOKENS[0].symbol);
     const [amount, setAmount] = useState("");
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);

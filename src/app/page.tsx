@@ -12,11 +12,11 @@ export default function Home() {
         <section className="flex-1 max-w-2xl">
           <LendBorrowTabs />
         </section>
-        <aside className="flex flex-col gap-8 w-[340px] min-w-[300px]">
+        {/* <aside className="flex flex-col gap-8 w-[340px] min-w-[300px]">
           <PortfolioSummary />
           <RecentTransactions />
           <ChainStatus />
-        </aside>
+        </aside> */}
       </main>
     </div>
   );
