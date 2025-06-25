@@ -89,8 +89,12 @@ export default function LendForm() {
             });
             setSuccess(true);
             setTimeout(() => setSuccess(false), 2000);
-        } catch (err: any) {
-            setError(err?.message || "Transaction failed");
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError("Transaction failed");
+            }
         } finally {
             setLoading(false);
         }

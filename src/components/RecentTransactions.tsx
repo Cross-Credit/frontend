@@ -4,7 +4,7 @@ import { useState } from "react";
 
 
 export default function RecentTransactions() {
-    const [loading, setLoading] = useState(true);
+    const [loading] = useState(false);
     const [txs] = useState<{
         type: "lend" | "borrow";
         token: string;

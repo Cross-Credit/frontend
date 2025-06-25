@@ -100,7 +100,7 @@ export default function BorrowForm() {
       const decimals = token?.decimals || 18;
       const parsedAmount = parseUnits(borrowAmount, decimals);
       setIsPending(true);
-      const hash = await writeContractAsync({
+      const _hash = await writeContractAsync({
         address: LENDING_CONTRACT,
         abi,
         functionName: "borrow",
@@ -109,8 +109,12 @@ export default function BorrowForm() {
       setIsPending(false);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 2000);
-    } catch (err: any) {
-      setError(err?.message || "Transaction failed");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Transaction failed");
+      }
       setIsPending(false);
     } finally {
       setLoading(false);
