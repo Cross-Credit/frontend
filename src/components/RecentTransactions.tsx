@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 
 export default function RecentTransactions() {
     const [loading, setLoading] = useState(true);
-    const [txs, setTxs] = useState<{
+    const [txs] = useState<{
         type: "lend" | "borrow";
         token: string;
         amount: number;

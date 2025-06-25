@@ -1,3 +1,4 @@
+"use client"
 import { CHAINS } from "@/lib/utils";
 import { useChainId } from "wagmi";
 
