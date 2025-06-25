@@ -6,11 +6,13 @@ import {
   useWriteContract,
   useSimulateContract,
   useWaitForTransactionReceipt,
+  useSwitchChain,
 } from "wagmi";
 import { useState, useEffect } from "react";
 import { CHAINS, TOKENS } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { parseUnits } from "viem";
+import { useTokenPrices } from "@/lib/useTokenPrices";
 
 export default function BorrowForm() {
   const chainId = useChainId();
@@ -23,17 +25,37 @@ export default function BorrowForm() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
-  const [interestRate] = useState(3.5); // Placeholder, replace with actual logic if needed
-  const [maxBorrowable] = useState(1000); // Placeholder, replace with actual logic if needed
+  const [selectedChain, setSelectedChain] = useState(chainId);
+  const { switchChain } = useSwitchChain();
+
+  const prices = useTokenPrices([collateralToken, borrowToken].filter(Boolean));
+  const collateralPrice = prices[collateralToken] || 0;
+  const borrowPrice = prices[borrowToken] || 0;
+  const collateralAmountNum = parseFloat(collateralAmount) || 0;
+  const borrowAmountNum = parseFloat(borrowAmount) || 0;
+  // Collateral in USD
+  const collateralUSD = collateralAmountNum * collateralPrice;
+  // Max borrowable in USD (90% of collateral)
+  const maxBorrowableUSD = collateralUSD * 0.9;
+  // Max borrowable in borrow token
+  const maxBorrowable = borrowPrice ? (maxBorrowableUSD / borrowPrice).toFixed(6) : "0";
+  // Interest in USD (10% of collateral)
+  const interestUSD = collateralUSD * 0.1;
+  // Interest in collateral token
+  const interestRate = (collateralAmountNum * 0.1).toFixed(6);
 
   // Lending contract address (same for all chains as per user)
-  const LENDING_CONTRACT = "0xD3e129ff54594e3c50d4BD219f29C51f675993Aa";
+  const LENDING_CONTRACT = "0x901CfBA2a215939Dfc4039d6E07946dD6b453b9A";
+
+  useEffect(() => {
+    setSelectedChain(chainId);
+  }, [chainId]);
 
   // Get token address for the selected borrow token and current chain
   function getTokenAddress(symbol: string): string | undefined {
     const token = TOKENS.find((t) => t.symbol === symbol);
     if (!token) return undefined;
-    switch (chainId) {
+    switch (selectedChain) {
       case 1:
         return token.addresses.ethereum;
       case 137:
@@ -57,8 +79,18 @@ export default function BorrowForm() {
     setSuccess(false);
     setIsPending(false);
     try {
+      if (!address) {
+        setError("Please connect your wallet.");
+        setLoading(false);
+        return;
+      }
       if (!borrowToken || !borrowAmount) {
         setError("Please select a borrow token and enter an amount.");
+        setLoading(false);
+        return;
+      }
+      if (parseFloat(borrowAmount) > Number(maxBorrowable)) {
+        setError("You cannot borrow more than 90% of your collateral.");
         setLoading(false);
         return;
       }
@@ -101,8 +133,16 @@ export default function BorrowForm() {
           <label className="block text-xs mb-1 font-medium">Chain</label>
           <select
             className="w-full border rounded px-3 py-2 bg-background"
-            value={chainId}
-            disabled
+            value={selectedChain}
+            onChange={async (e) => {
+              const newChainId = Number(e.target.value);
+              setSelectedChain(newChainId);
+              try {
+                await switchChain({ chainId: newChainId });
+              } catch (err) {
+                // handle error (e.g., user rejected, chain not added)
+              }
+            }}
           >
             {CHAINS.map((c) => (
               <option key={c.id} value={c.id}>
@@ -121,6 +161,7 @@ export default function BorrowForm() {
             className="w-full border rounded px-3 py-2 bg-background"
             value={collateralToken}
             onChange={(e) => setCollateralToken(e.target.value)}
+            disabled={!address}
           >
             <option value="">Select</option>
             {TOKENS.map((t) => (
@@ -144,6 +185,7 @@ export default function BorrowForm() {
           value={collateralAmount}
           onChange={(e) => setCollateralAmount(e.target.value)}
           placeholder="0.00"
+          disabled={!address}
         />
       </div>
 
@@ -155,6 +197,7 @@ export default function BorrowForm() {
             className="w-full border rounded px-3 py-2 bg-background"
             value={borrowToken}
             onChange={(e) => setBorrowToken(e.target.value)}
+            disabled={!address}
           >
             <option value="">Select</option>
             {TOKENS.map((t) => (
@@ -176,30 +219,41 @@ export default function BorrowForm() {
             value={borrowAmount}
             onChange={(e) => setBorrowAmount(e.target.value)}
             placeholder="0.00"
+            disabled={!address}
           />
           <div className="text-xs text-muted-foreground mt-1">
-            Max: {maxBorrowable}
+            Max: {maxBorrowable} {borrowToken || ''} (~${maxBorrowableUSD.toFixed(2)})
           </div>
         </div>
       </div>
 
       {/* Interest Rate Display */}
       <div className="flex items-center justify-between text-sm">
-        <span>Interest Rate:</span>
-        <span className="font-semibold">{interestRate}%</span>
+        <span>Interest (10% of collateral):</span>
+        <span className="font-semibold">{interestRate} {collateralToken || ''} (~${interestUSD.toFixed(2)})</span>
       </div>
 
       {/* Borrow Button */}
       <Button
         type="button"
         onClick={handleBorrow}
-        disabled={loading || isPending || !borrowAmount || !borrowToken}
+        disabled={
+          loading ||
+          isPending ||
+          !borrowAmount ||
+          !borrowToken ||
+          !collateralAmount ||
+          !collateralToken ||
+          !address
+        }
         className="mt-2"
       >
         {loading || isPending
           ? "Borrowing..."
           : success
           ? "Borrowed!"
+          : !address
+          ? "Connect Wallet"
           : "Borrow"}
       </Button>
 

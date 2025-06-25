@@ -12,6 +12,7 @@ export const CHAINS = [
   { name: "Polygon", id: 137 },
   { name: "Arbitrum", id: 42161 },
   { name: "Optimism", id: 10 },
+  { name: "Sepolia", id: 11155111 },
 ];
 
 export const TOKENS = [
@@ -66,39 +67,6 @@ export const TOKENS = [
 ] as const;
 
 
-export function mockGetAPY(token: string, chainId: number) {
-  return 4.5 + Math.random() * 2; // 4.5% - 6.5%
-}
 
-export function mockGetInterestRate(token: string, chainId: number) {
-  return 6.0 + Math.random() * 2; // 6% - 8%
-}
 
-export function mockGetPortfolio(address: string) {
-  return new Promise<{ supplied: number; borrowed: number; netAPY: number }>((resolve) => {
-    setTimeout(
-      () =>
-        resolve({
-          supplied: 2500.0,
-          borrowed: 900.0,
-          netAPY: 3.8,
-        }),
-      600
-    );
-  });
-}
 
-export function mockGetRecentTransactions(address: string) {
-  return new Promise<
-    { type: "lend" | "borrow"; token: string; amount: number; chain: string; date: string }[]
-  >((resolve) => {
-    setTimeout(
-      () =>
-        resolve([
-          { type: "lend", token: "USDC", amount: 500, chain: "Ethereum", date: "2024-06-01" },
-          { type: "borrow", token: "DAI", amount: 200, chain: "Polygon", date: "2024-06-02" },
-        ]),
-      500
-    );
-  });
-}
