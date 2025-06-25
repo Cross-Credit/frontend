@@ -4,8 +4,6 @@ import {
   useChainId,
   useAccount,
   useWriteContract,
-  useSimulateContract,
-  useWaitForTransactionReceipt,
   useSwitchChain,
 } from "wagmi";
 import { useState, useEffect } from "react";
@@ -31,9 +29,7 @@ export default function BorrowForm() {
   const prices = useTokenPrices([collateralToken, borrowToken].filter(Boolean));
   const collateralPrice = prices[collateralToken] || 0;
   const borrowPrice = prices[borrowToken] || 0;
-  const collateralAmountNum = parseFloat(collateralAmount) || 0;
-  const borrowAmountNum = parseFloat(borrowAmount) || 0;
-  // Collateral in USD
+  const collateralAmountNum = parseFloat(collateralAmount) || 0;  // Collateral in USD
   const collateralUSD = collateralAmountNum * collateralPrice;
   // Max borrowable in USD (90% of collateral)
   const maxBorrowableUSD = collateralUSD * 0.9;
@@ -67,8 +63,7 @@ export default function BorrowForm() {
       default:
         return undefined;
     }
-  }
-
+  }  
   // Write contract hook
   const { writeContractAsync } = useWriteContract();
 

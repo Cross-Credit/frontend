@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { mockGetRecentTransactions } from "@/lib/utils";
+
 
 export default function RecentTransactions() {
     const [loading, setLoading] = useState(true);
@@ -13,13 +13,7 @@ export default function RecentTransactions() {
         date: string;
     }[]>([]);
 
-    useEffect(() => {
-        setLoading(true);
-        mockGetRecentTransactions("0x1234...abcd").then((data) => {
-            setTxs(data);
-            setLoading(false);
-        });
-    }, []);
+   
 
     return (
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm">

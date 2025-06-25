@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type ReactNode } from "react";
 import { useState } from "react";
 import config from "@/rainbowKitConfig";
-import { RainbowKitProvider , ConnectButton} from "@rainbow-me/rainbowkit";
+import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
 import '@rainbow-me/rainbowkit/styles.css';
 
