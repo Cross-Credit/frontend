@@ -108,7 +108,12 @@ export default function BorrowForm() {
       setIsPending(false);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 2000);
-    } catch {
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Transaction failed");
+      }
       setIsPending(false);
     } finally {
       setLoading(false);
@@ -133,7 +138,7 @@ export default function BorrowForm() {
               try {
                 await switchChain({ chainId: newChainId });
               } catch (err) {
-                // handle error (e.g., user rejected, chain not added)
+                console.error("Failed to switch chain:", err);
               }
             }}
           >

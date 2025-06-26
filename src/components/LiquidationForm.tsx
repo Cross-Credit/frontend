@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { useAccount } from "wagmi";
-import { toast } from "sonner";
 
 export default function LiquidationForm() {
   const { address } = useAccount();

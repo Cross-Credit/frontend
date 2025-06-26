@@ -21,7 +21,7 @@ export default function LendBorrowTabs() {
         setTab(value);
     };
     return (
-        <Tabs value={tab} onValueChange={handleTabChange} className="w-full">
+        <Tabs value={tab} defaultValue="lend" onValueChange={handleTabChange} className="w-full">
             <TabsList className="mb-6">
                 <TabsTrigger value="lend">LEND</TabsTrigger>
                 <TabsTrigger value="borrow">BORROW</TabsTrigger>

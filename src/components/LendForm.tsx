@@ -7,7 +7,6 @@ import { abi } from "@/const/abi";
 import { useChainId, useAccount, useWriteContract, useSwitchChain } from "wagmi";
 import { parseUnits } from "viem";
 import { useTokenPrices } from "@/lib/useTokenPrices";
-import { toast } from "sonner";
 
 export default function LendForm() {
     // const [mounted, setMounted] = useState(false);
@@ -60,7 +59,7 @@ export default function LendForm() {
         setSuccess(false);
         try {
             if (!address) {
-                toast.error("Please connect your wallet to use this feature.");
+                // toast.error("Please connect your wallet to use this feature.");
                 setLoading(false);
                 return;
             }
@@ -118,6 +117,8 @@ export default function LendForm() {
                                 await switchChain({ chainId: newChainId });
                             } catch (err) {
                                 // handle error (e.g., user rejected, chain not added)
+                console.error("Failed to switch chain:", err);
+
                             }
                         }}
                     >

@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { TOKENS } from "@/lib/utils";
 import { useState } from "react";
 import { useAccount } from "wagmi";
-import { toast } from "sonner";
 
 export default function UnlendForm() {
   const [token, setToken] = useState<string>(TOKENS[0].symbol);
