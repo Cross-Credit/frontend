@@ -11,6 +11,7 @@ import { CHAINS, TOKENS } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { parseUnits } from "viem";
 import { useTokenPrices } from "@/lib/useTokenPrices";
+import { toast } from "sonner";
 
 export default function BorrowForm() {
   const chainId = useChainId();
@@ -60,6 +61,8 @@ export default function BorrowForm() {
         return token.addresses.arbitrum;
       case 10:
         return token.addresses.optimism;
+      case 11155111:
+        return token.addresses.sepolia;
       default:
         return undefined;
     }
@@ -75,22 +78,26 @@ export default function BorrowForm() {
     setIsPending(false);
     try {
       if (!address) {
+        toast.error("Please connect your wallet to use this feature.");
         setLoading(false);
         return;
       }
       if (!borrowToken || !borrowAmount) {
         setError("Please select a borrow token and enter an amount.");
+        toast.error("Please select a borrow token and enter an amount.");
         setLoading(false);
         return;
       }
       if (parseFloat(borrowAmount) > Number(maxBorrowable)) {
         setError("You cannot borrow more than 90% of your collateral.");
+        toast.error("You cannot borrow more than 90% of your collateral.");
         setLoading(false);
         return;
       }
       const tokenAddress = getTokenAddress(borrowToken);
       if (!tokenAddress) {
         setError("Invalid token or chain.");
+        toast.error("Invalid token or chain.");
         setLoading(false);
         return;
       }
@@ -107,13 +114,17 @@ export default function BorrowForm() {
       });
       setIsPending(false);
       setSuccess(true);
+      toast.success("Borrow successful!");
       setTimeout(() => setSuccess(false), 2000);
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Transaction failed");
-      }
+      const errorMsg =
+        err instanceof Error && err.message.includes("User denied transaction signature")
+          ? "Transaction cancelled by user."
+          : err instanceof Error
+            ? err.message
+            : "Transaction failed";
+      setError(errorMsg);
+      toast.error(errorMsg);
       setIsPending(false);
     } finally {
       setLoading(false);

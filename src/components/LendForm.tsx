@@ -7,6 +7,7 @@ import { abi } from "@/const/abi";
 import { useChainId, useAccount, useWriteContract, useSwitchChain } from "wagmi";
 import { parseUnits } from "viem";
 import { useTokenPrices } from "@/lib/useTokenPrices";
+import { toast } from "sonner";
 
 export default function LendForm() {
     // const [mounted, setMounted] = useState(false);
@@ -48,6 +49,8 @@ export default function LendForm() {
                 return t.addresses.arbitrum;
             case 10:
                 return t.addresses.optimism;
+            case 11155111:
+                return t.addresses.sepolia;
             default:
                 return undefined;
         }
@@ -59,23 +62,26 @@ export default function LendForm() {
         setSuccess(false);
         try {
             if (!address) {
-                // toast.error("Please connect your wallet to use this feature.");
+                toast.error("Please connect your wallet to use this feature.");
                 setLoading(false);
                 return;
             }
             if (!token || !amount) {
                 setError("Please select a token and enter an amount.");
+                toast.error("Please select a token and enter an amount.");
                 setLoading(false);
                 return;
             }
             if (amountNum <= 0) {
                 setError("Amount must be greater than zero.");
+                toast.error("Amount must be greater than zero.");
                 setLoading(false);
                 return;
             }
             const tokenAddress = getTokenAddress(token);
             if (!tokenAddress) {
                 setError("Invalid token or chain.");
+                toast.error("Invalid token or chain.");
                 setLoading(false);
                 return;
             }
@@ -83,7 +89,7 @@ export default function LendForm() {
             const decimals = t?.decimals || 18;
             const parsedAmount = parseUnits(amount, decimals);
             // If the token is the native asset, send value, else value is 0
-            const isNative = token === "ETH"; // adjust if you have other native tokens per chain
+            const isNative = token === "ETH";
             await writeContractAsync({
                 address: LENDING_CONTRACT,
                 abi,
@@ -92,9 +98,17 @@ export default function LendForm() {
                 value: isNative ? parsedAmount : undefined,
             });
             setSuccess(true);
+            toast.success("Supply successful!");
             setTimeout(() => setSuccess(false), 2000);
-        } catch {
-            setError("Transaction failed");
+        } catch (err: unknown) {
+            const errorMsg =
+                err instanceof Error && err.message.includes("User denied transaction signature")
+                    ? "Transaction cancelled by user."
+                    : err instanceof Error
+                        ? err.message
+                        : "Transaction failed";
+            setError(errorMsg);
+            toast.error(errorMsg);
         } finally {
             setLoading(false);
         }

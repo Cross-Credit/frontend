@@ -1,24 +1,129 @@
+"use client";
 import { Button } from "@/components/ui/button";
-import { TOKENS } from "@/lib/utils";
 import { useState } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId, useWriteContract, useSwitchChain } from "wagmi";
+import { parseUnits } from "viem";
+import { abi } from "@/const/abi";
+import { CHAINS, TOKENS } from "@/lib/utils";
+import { toast } from "sonner";
 
 export default function UnlendForm() {
-  const [token, setToken] = useState<string>(TOKENS[0].symbol);
+  const chainId = useChainId();
   const { address } = useAccount();
-  const handleUnlend = () => {
-    if (!address) {
-      return;
+  const { writeContractAsync } = useWriteContract();
+  const [selectedChain, setSelectedChain] = useState(chainId);
+  const { switchChain } = useSwitchChain();
+  const [token, setToken] = useState<string>(TOKENS[0].symbol);
+  const [amount, setAmount] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const LENDING_CONTRACT = "0x901CfBA2a215939Dfc4039d6E07946dD6b453b9A";
+
+  function getTokenAddress(symbol: string): string | undefined {
+    const t = TOKENS.find((tk) => tk.symbol === symbol);
+    if (!t) return undefined;
+    switch (selectedChain) {
+      case 1:
+        return t.addresses.ethereum;
+      case 137:
+        return t.addresses.polygon;
+      case 42161:
+        return t.addresses.arbitrum;
+      case 10:
+        return t.addresses.optimism;
+      case 11155111:
+        return t.addresses.sepolia;
+      default:
+        return undefined;
     }
-    // ...rest of logic
+  }
+
+  const handleUnlend = async () => {
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
+    try {
+      if (!address) {
+        toast.error("Please connect your wallet to use this feature.");
+        setLoading(false);
+        return;
+      }
+      if (!token || !amount) {
+        setError("Please select a token and enter an amount.");
+        toast.error("Please select a token and enter an amount.");
+        setLoading(false);
+        return;
+      }
+      const amountNum = parseFloat(amount);
+      if (amountNum <= 0) {
+        setError("Amount must be greater than zero.");
+        toast.error("Amount must be greater than zero.");
+        setLoading(false);
+        return;
+      }
+      const tokenAddress = getTokenAddress(token);
+      if (!tokenAddress) {
+        setError("Invalid token or chain.");
+        toast.error("Invalid token or chain.");
+        setLoading(false);
+        return;
+      }
+      const t = TOKENS.find((tk) => tk.symbol === token);
+      const decimals = t?.decimals || 18;
+      const parsedAmount = parseUnits(amount, decimals);
+      await writeContractAsync({
+        address: LENDING_CONTRACT,
+        abi,
+        functionName: "unlend",
+        args: [parsedAmount, tokenAddress],
+      });
+      setSuccess(true);
+      toast.success("Unlend successful!");
+      setTimeout(() => setSuccess(false), 2000);
+    } catch (err: unknown) {
+      const errorMsg =
+        err instanceof Error && err.message.includes("User denied transaction signature")
+          ? "Transaction cancelled by user."
+          : err instanceof Error
+            ? err.message
+            : "Transaction failed";
+      setError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
   };
+
   return (
     <div className="bg-card border border-border rounded-xl p-6 shadow-sm max-w-md mx-auto">
       <div className="font-semibold text-lg mb-4">Unlend</div>
       <form className="flex flex-col gap-4">
         <div>
+          <label className="block text-xs mb-1 font-medium">Chain</label>
+          <select
+            className="w-full border rounded px-3 py-2 bg-background"
+            value={selectedChain}
+            onChange={async (e) => {
+              const newChainId = Number(e.target.value);
+              setSelectedChain(newChainId);
+              try {
+                await switchChain({ chainId: newChainId });
+              } catch (err) {
+                console.error("Failed to switch chain:", err);
+              }
+            }}
+            disabled={!address}
+          >
+            {CHAINS.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
           <label className="block text-xs mb-1 font-medium">Token</label>
-          <select className="w-full border rounded px-3 py-2 bg-background" value={token} onChange={e => setToken(e.target.value)}>
+          <select className="w-full border rounded px-3 py-2 bg-background" value={token} onChange={e => setToken(e.target.value)} disabled={!address}>
             {TOKENS.map(t => (
               <option key={t.symbol} value={t.symbol}>{t.symbol}</option>
             ))}
@@ -26,9 +131,12 @@ export default function UnlendForm() {
         </div>
         <div>
           <label className="block text-xs mb-1 font-medium">Amount</label>
-          <input type="number" min="0" className="w-full border rounded px-3 py-2 bg-background" placeholder="0.00" />
+          <input type="number" min="0" className="w-full border rounded px-3 py-2 bg-background" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" disabled={!address} />
         </div>
-        <Button type="button" onClick={handleUnlend}>Unlend</Button>
+        <Button type="button" onClick={handleUnlend} disabled={loading || !amount || !address}>
+          {loading ? "Unlending..." : success ? "Unlent!" : !address ? "Connect Wallet" : "Unlend"}
+        </Button>
+        {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
       </form>
     </div>
   );

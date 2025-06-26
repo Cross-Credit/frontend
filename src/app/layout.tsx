@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Cross Credit",
-  description: "Be unchained",
+  description: "Be unchained and get Credit",
 };
 
 export default function RootLayout({
