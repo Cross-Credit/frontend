@@ -75,7 +75,6 @@ export default function BorrowForm() {
     setIsPending(false);
     try {
       if (!address) {
-        setError("Please connect your wallet.");
         setLoading(false);
         return;
       }
@@ -100,7 +99,7 @@ export default function BorrowForm() {
       const decimals = token?.decimals || 18;
       const parsedAmount = parseUnits(borrowAmount, decimals);
       setIsPending(true);
-      const _hash = await writeContractAsync({
+      await writeContractAsync({
         address: LENDING_CONTRACT,
         abi,
         functionName: "borrow",
@@ -109,12 +108,7 @@ export default function BorrowForm() {
       setIsPending(false);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 2000);
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Transaction failed");
-      }
+    } catch {
       setIsPending(false);
     } finally {
       setLoading(false);

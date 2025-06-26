@@ -9,12 +9,16 @@ const TabsContext = React.createContext<TabsContextType | undefined>(undefined);
 
 interface TabsProps {
     defaultValue: string;
+    value?: string;
+    onValueChange?: (v: string) => void;
     className?: string;
     children: React.ReactNode;
 }
 
-export function Tabs({ defaultValue, className, children }: TabsProps) {
-    const [value, setValue] = React.useState(defaultValue);
+export function Tabs({ defaultValue, value: controlledValue, onValueChange, className, children }: TabsProps) {
+    const [uncontrolledValue, setUncontrolledValue] = React.useState(defaultValue);
+    const value = controlledValue !== undefined ? controlledValue : uncontrolledValue;
+    const setValue = onValueChange || setUncontrolledValue;
     return (
         <TabsContext.Provider value={{ value, setValue }}>
             <div className={cn("", className)}>{children}</div>
@@ -50,7 +54,6 @@ export function TabsTrigger({ value, children, className }: TabsTriggerProps) {
                 className
             )}
             onClick={() => ctx.setValue(value)}
-            aria-selected={active}
         >
             {children}
         </button>

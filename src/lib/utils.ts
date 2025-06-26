@@ -12,7 +12,7 @@ export const CHAINS = [
   { name: "Polygon", id: 137 },
   { name: "Arbitrum", id: 42161 },
   { name: "Optimism", id: 10 },
-  { name: "Sepolia", id: 11155111 },
+  { name: "Sepolia", id: 31337 },
 ];
 
 export const TOKENS = [

@@ -7,8 +7,13 @@ import { abi } from "@/const/abi";
 import { useChainId, useAccount, useWriteContract, useSwitchChain } from "wagmi";
 import { parseUnits } from "viem";
 import { useTokenPrices } from "@/lib/useTokenPrices";
+import { toast } from "sonner";
 
 export default function LendForm() {
+    // const [mounted, setMounted] = useState(false);
+    // useEffect(() => {
+    //     setMounted(true);
+    // }, []);
     const chainId = useChainId();
     const { address } = useAccount();
     const [selectedChain, setSelectedChain] = useState(chainId);
@@ -55,7 +60,7 @@ export default function LendForm() {
         setSuccess(false);
         try {
             if (!address) {
-                setError("Please connect your wallet.");
+                toast.error("Please connect your wallet to use this feature.");
                 setLoading(false);
                 return;
             }
@@ -89,16 +94,14 @@ export default function LendForm() {
             });
             setSuccess(true);
             setTimeout(() => setSuccess(false), 2000);
-        } catch (err: unknown) {
-            if (err instanceof Error) {
-                setError(err.message);
-            } else {
-                setError("Transaction failed");
-            }
+        } catch {
+            setError("Transaction failed");
         } finally {
             setLoading(false);
         }
     };
+
+    // if (!mounted) return null;
 
     return (
         <form className="flex flex-col gap-5 bg-card p-6 rounded-xl border border-border shadow-sm">
