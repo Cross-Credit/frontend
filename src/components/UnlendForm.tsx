@@ -19,22 +19,19 @@ export default function UnlendForm() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const LENDING_CONTRACT = "0x901CfBA2a215939Dfc4039d6E07946dD6b453b9A";
-
+  const ABI_ADDRESS =
+    chainId === 11155111
+      ? "0xF91A70a47b87f4196F21ce62e35a96bb994FFa3e" // Sepolia testnet
+      : "0x146A6aeA830316aC0D7C69BcbE24Cd3dfeE2d452"; // Ethereum mainnet
+  
   function getTokenAddress(symbol: string): string | undefined {
     const t = TOKENS.find((tk) => tk.symbol === symbol);
     if (!t) return undefined;
     switch (selectedChain) {
-      case 1:
-        return t.addresses.ethereum;
-      case 137:
-        return t.addresses.polygon;
-      case 42161:
-        return t.addresses.arbitrum;
-      case 10:
-        return t.addresses.optimism;
       case 11155111:
         return t.addresses.sepolia;
+      case 43113:
+        return t.addresses.avalancheFuji;
       default:
         return undefined;
     }
@@ -74,7 +71,7 @@ export default function UnlendForm() {
       const decimals = t?.decimals || 18;
       const parsedAmount = parseUnits(amount, decimals);
       await writeContractAsync({
-        address: LENDING_CONTRACT,
+        address: ABI_ADDRESS,
         abi,
         functionName: "unlend",
         args: [parsedAmount, tokenAddress],
@@ -84,11 +81,12 @@ export default function UnlendForm() {
       setTimeout(() => setSuccess(false), 2000);
     } catch (err: unknown) {
       const errorMsg =
-        err instanceof Error && err.message.includes("User denied transaction signature")
+        err instanceof Error &&
+        err.message.includes("User denied transaction signature")
           ? "Transaction cancelled by user."
           : err instanceof Error
-            ? err.message
-            : "Transaction failed";
+          ? err.message
+          : "Transaction failed";
       setError(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -117,24 +115,51 @@ export default function UnlendForm() {
             disabled={!address}
           >
             {CHAINS.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
             ))}
           </select>
         </div>
         <div>
           <label className="block text-xs mb-1 font-medium">Token</label>
-          <select className="w-full border rounded px-3 py-2 bg-background" value={token} onChange={e => setToken(e.target.value)} disabled={!address}>
-            {TOKENS.map(t => (
-              <option key={t.symbol} value={t.symbol}>{t.symbol}</option>
+          <select
+            className="w-full border rounded px-3 py-2 bg-background"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            disabled={!address}
+          >
+            {TOKENS.map((t) => (
+              <option key={t.symbol} value={t.symbol}>
+                {t.symbol}
+              </option>
             ))}
           </select>
         </div>
         <div>
           <label className="block text-xs mb-1 font-medium">Amount</label>
-          <input type="number" min="0" className="w-full border rounded px-3 py-2 bg-background" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" disabled={!address} />
+          <input
+            type="number"
+            min="0"
+            className="w-full border rounded px-3 py-2 bg-background"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="0.00"
+            disabled={!address}
+          />
         </div>
-        <Button type="button" onClick={handleUnlend} disabled={loading || !amount || !address}>
-          {loading ? "Unlending..." : success ? "Unlent!" : !address ? "Connect Wallet" : "Unlend"}
+        <Button
+          type="button"
+          onClick={handleUnlend}
+          disabled={loading || !amount || !address}
+        >
+          {loading
+            ? "Unlending..."
+            : success
+            ? "Unlent!"
+            : !address
+            ? "Connect Wallet"
+            : "Unlend"}
         </Button>
         {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
       </form>

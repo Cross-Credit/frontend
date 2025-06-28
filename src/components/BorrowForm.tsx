@@ -30,19 +30,25 @@ export default function BorrowForm() {
   const prices = useTokenPrices([collateralToken, borrowToken].filter(Boolean));
   const collateralPrice = prices[collateralToken] || 0;
   const borrowPrice = prices[borrowToken] || 0;
-  const collateralAmountNum = parseFloat(collateralAmount) || 0;  // Collateral in USD
+  const collateralAmountNum = parseFloat(collateralAmount) || 0; // Collateral in USD
   const collateralUSD = collateralAmountNum * collateralPrice;
   // Max borrowable in USD (90% of collateral)
   const maxBorrowableUSD = collateralUSD * 0.9;
   // Max borrowable in borrow token
-  const maxBorrowable = borrowPrice ? (maxBorrowableUSD / borrowPrice).toFixed(6) : "0";
+  const maxBorrowable = borrowPrice
+    ? (maxBorrowableUSD / borrowPrice).toFixed(6)
+    : "0";
   // Interest in USD (10% of collateral)
   const interestUSD = collateralUSD * 0.1;
   // Interest in collateral token
   const interestRate = (collateralAmountNum * 0.1).toFixed(6);
 
-  // Lending contract address (same for all chains as per user)
-  const LENDING_CONTRACT = "0x901CfBA2a215939Dfc4039d6E07946dD6b453b9A";
+
+  const ABI_ADDRESS =
+    chainId === 11155111
+      ? "0xF91A70a47b87f4196F21ce62e35a96bb994FFa3e" // Sepolia testnet
+      : 
+      "0x146A6aeA830316aC0D7C69BcbE24Cd3dfeE2d452" // Ethereum mainnet
 
   useEffect(() => {
     setSelectedChain(chainId);
@@ -53,20 +59,14 @@ export default function BorrowForm() {
     const token = TOKENS.find((t) => t.symbol === symbol);
     if (!token) return undefined;
     switch (selectedChain) {
-      case 1:
-        return token.addresses.ethereum;
-      case 137:
-        return token.addresses.polygon;
-      case 42161:
-        return token.addresses.arbitrum;
-      case 10:
-        return token.addresses.optimism;
       case 11155111:
         return token.addresses.sepolia;
+      case 14113:
+        return token.addresses.avalancheFuji;
       default:
         return undefined;
     }
-  }  
+  }
   // Write contract hook
   const { writeContractAsync } = useWriteContract();
 
@@ -107,7 +107,7 @@ export default function BorrowForm() {
       const parsedAmount = parseUnits(borrowAmount, decimals);
       setIsPending(true);
       await writeContractAsync({
-        address: LENDING_CONTRACT,
+        address: ABI_ADDRESS,
         abi,
         functionName: "borrow",
         args: [parsedAmount, tokenAddress],
@@ -118,11 +118,12 @@ export default function BorrowForm() {
       setTimeout(() => setSuccess(false), 2000);
     } catch (err: unknown) {
       const errorMsg =
-        err instanceof Error && err.message.includes("User denied transaction signature")
+        err instanceof Error &&
+        err.message.includes("User denied transaction signature")
           ? "Transaction cancelled by user."
           : err instanceof Error
-            ? err.message
-            : "Transaction failed";
+          ? err.message
+          : "Transaction failed";
       setError(errorMsg);
       toast.error(errorMsg);
       setIsPending(false);
@@ -132,7 +133,6 @@ export default function BorrowForm() {
   };
 
   // Handle transaction confirmation
-
 
   return (
     <form className="flex flex-col gap-5 bg-card p-6 rounded-xl border border-border shadow-sm">
@@ -231,7 +231,8 @@ export default function BorrowForm() {
             disabled={!address}
           />
           <div className="text-xs text-muted-foreground mt-1">
-            Max: {maxBorrowable} {borrowToken || ''} (~${maxBorrowableUSD.toFixed(2)})
+            Max: {maxBorrowable} {borrowToken || ""} (~$
+            {maxBorrowableUSD.toFixed(2)})
           </div>
         </div>
       </div>
@@ -239,7 +240,9 @@ export default function BorrowForm() {
       {/* Interest Rate Display */}
       <div className="flex items-center justify-between text-sm">
         <span>Interest (10% of collateral):</span>
-        <span className="font-semibold">{interestRate} {collateralToken || ''} (~${interestUSD.toFixed(2)})</span>
+        <span className="font-semibold">
+          {interestRate} {collateralToken || ""} (~${interestUSD.toFixed(2)})
+        </span>
       </div>
 
       {/* Borrow Button */}
