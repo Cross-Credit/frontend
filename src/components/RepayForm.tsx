@@ -1,9 +1,10 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
-import { useAccount, useChainId, useWriteContract, useSwitchChain } from "wagmi";
+import { useAccount, useChainId, useWriteContract, useSwitchChain, useReadContract } from "wagmi";
 import { parseUnits } from "viem";
 import { abi } from "@/const/abi";
+import { erc20Abi } from "@/const/erc20Abi";
 import { CHAINS, TOKENS, getAvailableTokens, getCrossCreditAddress, getTokenAddress } from "@/lib/utils";
 import { useTokenPrices } from "@/lib/useTokenPrices";
 import { toast } from "sonner";
@@ -49,6 +50,18 @@ export default function RepayForm() {
     return address || undefined;
   }
 
+  const tokenAddress = getTokenAddressForRepay(token);
+  const t = TOKENS.find((tk) => tk.symbol === token);
+  const isNative = t?.isNative;
+  const canCheckAllowance = !!address && !!tokenAddress && !isNative;
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
+    abi: erc20Abi,
+    address: canCheckAllowance ? (tokenAddress as `0x${string}`) : undefined,
+    functionName: "allowance",
+    args: canCheckAllowance ? [address, ABI_ADDRESS as `0x${string}`] : undefined,
+    query: { enabled: canCheckAllowance },
+  });
+
   const handleRepay = async () => {
     setLoading(true);
     setError(null);
@@ -72,17 +85,34 @@ export default function RepayForm() {
         setLoading(false);
         return;
       }
-      const tokenAddress = getTokenAddressForRepay(token);
       if (!tokenAddress) {
         setError("Invalid token or chain.");
         toast.error("Invalid token or chain.");
         setLoading(false);
         return;
       }
+      if (!ABI_ADDRESS) {
+        setError("Invalid contract address.");
+        toast.error("Invalid contract address.");
+        setLoading(false);
+        return;
+      }
       const t = TOKENS.find((tk) => tk.symbol === token);
       const decimals = t?.decimals || 18;
       const parsedAmount = parseUnits(amount, decimals);
-      const isNative = t?.isNative;
+      // Check allowance and approve if needed (for ERC20 only)
+      if (!isNative) {
+        await refetchAllowance();
+        if (!allowance || BigInt(allowance) < BigInt(parsedAmount)) {
+          await writeContractAsync({
+            address: tokenAddress as `0x${string}`,
+            abi: erc20Abi,
+            functionName: "approve",
+            args: [ABI_ADDRESS as `0x${string}`, parsedAmount],
+          });
+          toast.success("Token approved!");
+        }
+      }
       await writeContractAsync({
         address: ABI_ADDRESS as `0x${string}`,
         abi,
