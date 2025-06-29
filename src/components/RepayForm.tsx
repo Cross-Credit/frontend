@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useAccount, useChainId, useWriteContract, useSwitchChain } from "wagmi";
 import { parseUnits } from "viem";
 import { abi } from "@/const/abi";
-import { CHAINS, TOKENS } from "@/lib/utils";
+import { CHAINS, TOKENS, getAvailableTokens } from "@/lib/utils";
+import { useTokenPrices } from "@/lib/useTokenPrices";
 import { toast } from "sonner";
 
 export default function RepayForm() {
@@ -13,16 +14,22 @@ export default function RepayForm() {
   const { writeContractAsync } = useWriteContract();
   const [selectedChain, setSelectedChain] = useState(chainId);
   const { switchChain } = useSwitchChain();
-  const [token, setToken] = useState<string>(TOKENS[0].symbol);
+  const [token, setToken] = useState<string>(getAvailableTokens(chainId)[0]?.symbol || "");
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Get token price for USD display
+  const prices = useTokenPrices([token].filter(Boolean));
+  const tokenPrice = prices[token] || 0;
+  const amountNum = parseFloat(amount) || 0;
+  const amountUSD = amountNum * tokenPrice;
+
   const ABI_ADDRESS =
     chainId === 11155111
       ? "0xF91A70a47b87f4196F21ce62e35a96bb994FFa3e" // Sepolia testnet
-      : "0x146A6aeA830316aC0D7C69BcbE24Cd3dfeE2d452"; // Ethereum mainnet
+      : "0x146A6aeA830316aC0D7C69BcbE24Cd3dfeE2d452"; // Avalanche Fuji testnet
   
   function getTokenAddress(symbol: string): string | undefined {
     const t = TOKENS.find((tk) => tk.symbol === symbol);
@@ -108,6 +115,11 @@ export default function RepayForm() {
             onChange={async (e) => {
               const newChainId = Number(e.target.value);
               setSelectedChain(newChainId);
+              // Reset token to first available token for the new chain
+              const availableTokens = getAvailableTokens(newChainId);
+              if (availableTokens.length > 0) {
+                setToken(availableTokens[0].symbol);
+              }
               try {
                 await switchChain({ chainId: newChainId });
               } catch (err) {
@@ -132,7 +144,7 @@ export default function RepayForm() {
             onChange={(e) => setToken(e.target.value)}
             disabled={!address}
           >
-            {TOKENS.map((t) => (
+            {getAvailableTokens(selectedChain).map((t) => (
               <option key={t.symbol} value={t.symbol}>
                 {t.symbol}
               </option>
@@ -150,6 +162,11 @@ export default function RepayForm() {
             placeholder="0.00"
             disabled={!address}
           />
+          {token && amount && (
+            <div className="text-xs text-muted-foreground mt-1">
+              Value: ${amountUSD.toFixed(2)} USD
+            </div>
+          )}
         </div>
         <Button
           type="button"

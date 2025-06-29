@@ -23,6 +23,7 @@ export const TOKENS = [
     },
     decimals: 18,
     isNative: true, // Flag for native ETH handling
+    networks: [11155111, 43113] as const, // Available on both Sepolia and Avalanche Fuji
   },
   {
     symbol: "LINK",
@@ -33,6 +34,7 @@ export const TOKENS = [
     },
     decimals: 18,
     isNative: false, // Not native, needs to be wrapped
+    networks: [11155111] as const, // Only available on Sepolia
   },
   {
     symbol: "AVAX",
@@ -43,9 +45,14 @@ export const TOKENS = [
     },
     decimals: 18,
     isNative: false, // Not native on these networks, needs to be wrapped
+    networks: [43113] as const, // Only available on Avalanche Fuji
   },
 ] as const;
 
+// Helper function to get available tokens for a specific network
+export function getAvailableTokens(chainId: number) {
+  return TOKENS.filter(token => (token.networks as readonly number[]).includes(chainId));
+}
 
 //0x92d682351F0E2Bdf19f63e77e97fa8f534D8D673 faucet addrs
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CHAINS, TOKENS } from "@/lib/utils";
+import { CHAINS, TOKENS, getAvailableTokens } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { abi } from "@/const/abi";
 import { useChainId, useAccount, useWriteContract, useSwitchChain } from "wagmi";
@@ -18,7 +18,7 @@ export default function LendForm() {
   const { address } = useAccount();
   const [selectedChain, setSelectedChain] = useState(chainId);
   const { switchChain } = useSwitchChain();
-  const [token, setToken] = useState<string>(TOKENS[0].symbol);
+  const [token, setToken] = useState<string>(getAvailableTokens(chainId)[0]?.symbol || "");
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -37,7 +37,7 @@ export default function LendForm() {
   const ABI_ADDRESS =
     chainId === 11155111
       ? "0xF91A70a47b87f4196F21ce62e35a96bb994FFa3e" // Sepolia testnet
-      : "0x146A6aeA830316aC0D7C69BcbE24Cd3dfeE2d452"; // Ethereum mainnet
+      : "0x146A6aeA830316aC0D7C69BcbE24Cd3dfeE2d45e"; // Avalanche Fuji testnet
 
   function getTokenAddress(symbol: string): string | undefined {
     const t = TOKENS.find((tk) => tk.symbol === symbol);
@@ -124,6 +124,11 @@ export default function LendForm() {
             onChange={async (e) => {
               const newChainId = Number(e.target.value);
               setSelectedChain(newChainId);
+              // Reset token to first available token for the new chain
+              const availableTokens = getAvailableTokens(newChainId);
+              if (availableTokens.length > 0) {
+                setToken(availableTokens[0].symbol);
+              }
               try {
                 await switchChain({ chainId: newChainId });
               } catch (err) {
@@ -147,7 +152,7 @@ export default function LendForm() {
             onChange={(e) => setToken(e.target.value)}
             disabled={!address}
           >
-            {TOKENS.map((t) => (
+            {getAvailableTokens(selectedChain).map((t) => (
               <option key={t.symbol} value={t.symbol}>
                 {t.symbol}
               </option>
@@ -167,12 +172,12 @@ export default function LendForm() {
           disabled={!address}
         />
         <div className="text-xs text-muted-foreground mt-1">
-          ~${amountUSD.toFixed(2)}
+          Value: ${amountUSD.toFixed(2)} USD
         </div>
       </div>
       <div className="flex items-center justify-between text-sm">
         <span>Estimated APY:</span>
-        <span className="font-semibold">%</span>
+        <span className="font-semibold">5.2%</span>
       </div>
       <Button
         type="button"

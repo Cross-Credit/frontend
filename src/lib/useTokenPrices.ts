@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 
 const COINGECKO_IDS: Record<string, string> = {
   ETH: "ethereum",
-  USDT: "tether",
+  AVAX: "avalnche",
+  LINK: "chainlink"
   // Add more tokens as needed
 };
 

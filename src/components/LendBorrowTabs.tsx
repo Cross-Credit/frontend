@@ -25,9 +25,9 @@ export default function LendBorrowTabs() {
             <TabsList className="mb-6">
                 <TabsTrigger value="lend">LEND</TabsTrigger>
                 <TabsTrigger value="borrow">BORROW</TabsTrigger>
-                <TabsTrigger value="liquidation">LIQUIDATION</TabsTrigger>
                 <TabsTrigger value="unlend">UNLEND</TabsTrigger>
                 <TabsTrigger value="repay">REPAY</TabsTrigger>
+                <TabsTrigger value="liquidation">LIQUIDATION</TabsTrigger>
             </TabsList>
             <TabsContent value="lend">
                 <LendForm />

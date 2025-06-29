@@ -1,11 +1,11 @@
 "use client"
 
 import { getDefaultConfig } from "@rainbow-me/rainbowkit"
-import { mainnet, polygon, arbitrum, optimism, sepolia } from "wagmi/chains";
+import { sepolia, avalancheFuji } from "wagmi/chains";
 
 export default getDefaultConfig({
     appName: "Cross-Credit Lending",
     projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!,
-    chains: [mainnet, polygon, arbitrum, optimism, sepolia],
+    chains: [sepolia, avalancheFuji],
     ssr: false,
 })

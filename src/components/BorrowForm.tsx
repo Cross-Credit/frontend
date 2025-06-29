@@ -7,7 +7,7 @@ import {
   useSwitchChain,
 } from "wagmi";
 import { useState, useEffect } from "react";
-import { CHAINS, TOKENS } from "@/lib/utils";
+import { CHAINS, TOKENS, getAvailableTokens } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { parseUnits } from "viem";
 import { useTokenPrices } from "@/lib/useTokenPrices";
@@ -30,25 +30,31 @@ export default function BorrowForm() {
   const prices = useTokenPrices([collateralToken, borrowToken].filter(Boolean));
   const collateralPrice = prices[collateralToken] || 0;
   const borrowPrice = prices[borrowToken] || 0;
-  const collateralAmountNum = parseFloat(collateralAmount) || 0; // Collateral in USD
+  
+  // Calculate collateral value in USD
+  const collateralAmountNum = parseFloat(collateralAmount) || 0;
   const collateralUSD = collateralAmountNum * collateralPrice;
-  // Max borrowable in USD (90% of collateral)
+  
+  // Max borrowable in USD (90% of collateral value)
   const maxBorrowableUSD = collateralUSD * 0.9;
-  // Max borrowable in borrow token
+  
+  // Max borrowable in borrow token units
   const maxBorrowable = borrowPrice
     ? (maxBorrowableUSD / borrowPrice).toFixed(6)
     : "0";
-  // Interest in USD (10% of collateral)
+  
+  // Interest in USD (10% of collateral value)
   const interestUSD = collateralUSD * 0.1;
-  // Interest in collateral token
-  const interestRate = (collateralAmountNum * 0.1).toFixed(6);
-
+  
+  // Interest in borrow token units (what the user will pay back)
+  const interestInBorrowToken = borrowPrice
+    ? (interestUSD / borrowPrice).toFixed(6)
+    : "0";
 
   const ABI_ADDRESS =
     chainId === 11155111
       ? "0xF91A70a47b87f4196F21ce62e35a96bb994FFa3e" // Sepolia testnet
-      : 
-      "0x146A6aeA830316aC0D7C69BcbE24Cd3dfeE2d452" // Ethereum mainnet
+      : "0x146A6aeA830316aC0D7C69BcbE24Cd3dfeE2d45e"; // AvalancheFuji mainnet
 
   useEffect(() => {
     setSelectedChain(chainId);
@@ -61,7 +67,7 @@ export default function BorrowForm() {
     switch (selectedChain) {
       case 11155111:
         return token.addresses.sepolia;
-      case 14113:
+      case 43113:
         return token.addresses.avalancheFuji;
       default:
         return undefined;
@@ -89,8 +95,8 @@ export default function BorrowForm() {
         return;
       }
       if (parseFloat(borrowAmount) > Number(maxBorrowable)) {
-        setError("You cannot borrow more than 90% of your collateral.");
-        toast.error("You cannot borrow more than 90% of your collateral.");
+        setError("You cannot borrow more than 90% of your collateral value.");
+        toast.error("You cannot borrow more than 90% of your collateral value.");
         setLoading(false);
         return;
       }
@@ -146,6 +152,12 @@ export default function BorrowForm() {
             onChange={async (e) => {
               const newChainId = Number(e.target.value);
               setSelectedChain(newChainId);
+              // Reset tokens to first available tokens for the new chain
+              const availableTokens = getAvailableTokens(newChainId);
+              if (availableTokens.length > 0) {
+                setCollateralToken(availableTokens[0].symbol);
+                setBorrowToken(availableTokens[0].symbol);
+              }
               try {
                 await switchChain({ chainId: newChainId });
               } catch (err) {
@@ -173,7 +185,7 @@ export default function BorrowForm() {
             disabled={!address}
           >
             <option value="">Select</option>
-            {TOKENS.map((t) => (
+            {getAvailableTokens(selectedChain).map((t) => (
               <option key={t.symbol} value={t.symbol}>
                 {t.symbol}
               </option>
@@ -196,6 +208,11 @@ export default function BorrowForm() {
           placeholder="0.00"
           disabled={!address}
         />
+        {collateralToken && collateralAmount && (
+          <div className="text-xs text-muted-foreground mt-1">
+            Value: ${collateralUSD.toFixed(2)} USD
+          </div>
+        )}
       </div>
 
       {/* Borrow Token and Amount */}
@@ -209,7 +226,7 @@ export default function BorrowForm() {
             disabled={!address}
           >
             <option value="">Select</option>
-            {TOKENS.map((t) => (
+            {getAvailableTokens(selectedChain).map((t) => (
               <option key={t.symbol} value={t.symbol}>
                 {t.symbol}
               </option>
@@ -231,17 +248,16 @@ export default function BorrowForm() {
             disabled={!address}
           />
           <div className="text-xs text-muted-foreground mt-1">
-            Max: {maxBorrowable} {borrowToken || ""} (~$
-            {maxBorrowableUSD.toFixed(2)})
+            Max: {maxBorrowable} {borrowToken || ""} (~${maxBorrowableUSD.toFixed(2)})
           </div>
         </div>
       </div>
 
       {/* Interest Rate Display */}
       <div className="flex items-center justify-between text-sm">
-        <span>Interest (10% of collateral):</span>
+        <span>Interest (10% of collateral value):</span>
         <span className="font-semibold">
-          {interestRate} {collateralToken || ""} (~${interestUSD.toFixed(2)})
+          {interestInBorrowToken} {borrowToken || ""} (~${interestUSD.toFixed(2)})
         </span>
       </div>
 
@@ -270,7 +286,7 @@ export default function BorrowForm() {
       </Button>
 
       {/* Error Message */}
-      {error && <div className="text-red-500 setBorrtext-xs mt-1">{error}</div>}
+      {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
     </form>
   );
 }
