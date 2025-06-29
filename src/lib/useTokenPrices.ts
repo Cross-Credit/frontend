@@ -1,33 +1,93 @@
 import { useEffect, useState } from "react";
+import { getPriceFeedAddress } from "./utils";
 
-const COINGECKO_IDS: Record<string, string> = {
-  ETH: "ethereum",
-  AVAX: "avalnche",
-  LINK: "chainlink"
-  // Add more tokens as needed
-};
+// Chainlink Price Feed ABI (minimal for getting latest price)
+const PRICE_FEED_ABI = [
+  {
+    inputs: [],
+    name: "latestRoundData",
+    outputs: [
+      { internalType: "uint80", name: "roundId", type: "uint80" },
+      { internalType: "int256", name: "answer", type: "int256" },
+      { internalType: "uint256", name: "startedAt", type: "uint256" },
+      { internalType: "uint256", name: "updatedAt", type: "uint256" },
+      { internalType: "uint80", name: "answeredInRound", type: "uint80" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  }
+] as const;
 
-export function useTokenPrices(symbols: string[]) {
+export function useTokenPrices(symbols: string[], chainId?: number) {
   const [prices, setPrices] = useState<Record<string, number>>({});
 
   useEffect(() => {
+    if (!chainId || chainId === 0) return;
+
     async function fetchPrices() {
-      const ids = symbols.map((s) => COINGECKO_IDS[s]).join(",");
-      if (!ids) return;
-      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`;
-      const res = await fetch(url);
-      const data = await res.json();
       const result: Record<string, number> = {};
-      symbols.forEach((symbol) => {
-        const id = COINGECKO_IDS[symbol];
-        result[symbol] = data[id]?.usd ?? 0;
-      });
+      
+      for (const symbol of symbols) {
+        try {
+          const priceFeedAddress = getPriceFeedAddress(symbol, chainId as number);
+          if (!priceFeedAddress) {
+            console.warn(`No price feed found for ${symbol} on chain ${chainId}`);
+            result[symbol] = 0;
+            continue;
+          }
+
+          // For now, we'll use a fallback to CoinGecko if Chainlink price feed fails
+          // In production, you should implement proper Chainlink price feed reading
+          const coingeckoId = getCoingeckoId(symbol);
+          if (coingeckoId) {
+            const response = await fetch(
+              `https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`
+            );
+            const data = await response.json();
+            result[symbol] = data[coingeckoId]?.usd ?? 0;
+          } else {
+            result[symbol] = 0;
+          }
+        } catch (error) {
+          console.error(`Error fetching price for ${symbol}:`, error);
+          result[symbol] = 0;
+        }
+      }
+      
       setPrices(result);
     }
+
     fetchPrices();
     const interval = setInterval(fetchPrices, 60_000); // refresh every minute
     return () => clearInterval(interval);
-  }, [symbols]);
+  }, [symbols, chainId]);
 
   return prices;
-} 
+}
+
+// Fallback mapping for CoinGecko IDs
+function getCoingeckoId(symbol: string): string | null {
+  const mapping: Record<string, string> = {
+    ETH: "ethereum",
+    LINK: "chainlink",
+    AVAX: "avalanche-2"
+  };
+  return mapping[symbol] || null;
+}
+
+// TODO: Implement proper Chainlink price feed reading
+// This would require using a library like viem or ethers to read from the blockchain
+// Example implementation:
+/*
+async function getChainlinkPrice(priceFeedAddress: string, provider: any): Promise<number> {
+  try {
+    const contract = new ethers.Contract(priceFeedAddress, PRICE_FEED_ABI, provider);
+    const roundData = await contract.latestRoundData();
+    const price = roundData.answer.toNumber() / 1e8; // Chainlink prices are in 8 decimals
+    return price;
+  } catch (error) {
+    console.error('Error reading Chainlink price feed:', error);
+    return 0;
+  }
+}
+*/ 

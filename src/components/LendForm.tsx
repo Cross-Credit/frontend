@@ -10,15 +10,16 @@ import { useTokenPrices } from "@/lib/useTokenPrices";
 import { toast } from "sonner";
 
 export default function LendForm() {
-  // const [mounted, setMounted] = useState(false);
-  // useEffect(() => {
-  //     setMounted(true);
-  // }, []);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
   const chainId = useChainId();
   const { address } = useAccount();
   const [selectedChain, setSelectedChain] = useState(chainId);
   const { switchChain } = useSwitchChain();
-  const [token, setToken] = useState<string>(getAvailableTokens(chainId)[0]?.symbol || "");
+  const [token, setToken] = useState<string>("");
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -27,9 +28,16 @@ export default function LendForm() {
 
   useEffect(() => {
     setSelectedChain(chainId);
-  }, [chainId]);
+    // Set initial token only after mounting
+    if (mounted && chainId) {
+      const availableTokens = getAvailableTokens(chainId);
+      if (availableTokens.length > 0) {
+        setToken(availableTokens[0].symbol);
+      }
+    }
+  }, [chainId, mounted]);
 
-  const prices = useTokenPrices([token]);
+  const prices = useTokenPrices([token], selectedChain);
   const tokenPrice = prices[token] || 0;
   const amountNum = parseFloat(amount) || 0;
   const amountUSD = amountNum * tokenPrice;
@@ -111,7 +119,7 @@ export default function LendForm() {
     }
   };
 
-  // if (!mounted) return null;
+  if (!mounted) return null;
 
   return (
     <form className="flex flex-col gap-5 bg-card p-6 rounded-xl border border-border shadow-sm">

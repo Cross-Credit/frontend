@@ -1,6 +1,6 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAccount, useChainId, useWriteContract, useSwitchChain } from "wagmi";
 import { parseUnits } from "viem";
 import { abi } from "@/const/abi";
@@ -9,22 +9,38 @@ import { useTokenPrices } from "@/lib/useTokenPrices";
 import { toast } from "sonner";
 
 export default function UnlendForm() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
   const chainId = useChainId();
   const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const [selectedChain, setSelectedChain] = useState(chainId);
   const { switchChain } = useSwitchChain();
-  const [token, setToken] = useState<string>(getAvailableTokens(chainId)[0]?.symbol || "");
+  const [token, setToken] = useState<string>("");
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Get token price for USD display
-  const prices = useTokenPrices([token].filter(Boolean));
+  const prices = useTokenPrices([token].filter(Boolean), selectedChain);
   const tokenPrice = prices[token] || 0;
   const amountNum = parseFloat(amount) || 0;
   const amountUSD = amountNum * tokenPrice;
+
+  useEffect(() => {
+    setSelectedChain(chainId);
+    // Set initial token only after mounting
+    if (mounted && chainId) {
+      const availableTokens = getAvailableTokens(chainId);
+      if (availableTokens.length > 0) {
+        setToken(availableTokens[0].symbol);
+      }
+    }
+  }, [chainId, mounted]);
 
   const ABI_ADDRESS =
     chainId === 11155111
@@ -100,6 +116,8 @@ export default function UnlendForm() {
       setLoading(false);
     }
   };
+
+  if (!mounted) return null;
 
   return (
     <div className="bg-card border border-border rounded-xl p-6 shadow-sm max-w-md mx-auto">

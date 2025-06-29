@@ -27,7 +27,7 @@ export default function BorrowForm() {
   const [selectedChain, setSelectedChain] = useState(chainId);
   const { switchChain } = useSwitchChain();
 
-  const prices = useTokenPrices([collateralToken, borrowToken].filter(Boolean));
+  const prices = useTokenPrices([collateralToken, borrowToken].filter(Boolean), selectedChain);
   const collateralPrice = prices[collateralToken] || 0;
   const borrowPrice = prices[borrowToken] || 0;
   
