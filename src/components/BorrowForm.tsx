@@ -5,6 +5,7 @@ import {
   useAccount,
   useWriteContract,
   useSwitchChain,
+  useReadContract,
 } from "wagmi";
 import { useState, useEffect } from "react";
 import { CHAINS, TOKENS, getAvailableTokens, getCrossCreditAddress, getTokenAddress } from "@/lib/utils";
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { parseUnits } from "viem";
 import { useTokenPrices } from "@/lib/useTokenPrices";
 import { toast } from "sonner";
+import { PositionType } from "@/types";
 
 export default function BorrowForm() {
   const chainId = useChainId();
@@ -64,6 +66,15 @@ export default function BorrowForm() {
   }
   // Write contract hook
   const { writeContractAsync } = useWriteContract();
+
+  // User borrowed balance for the selected borrow token
+  const { data: borrowedBalance } = useReadContract({
+    abi,
+    address: ABI_ADDRESS as `0x${string}`,
+    functionName: "getUserPositionForAssetByType",
+    args: getTokenAddressForBorrow(borrowToken) && address ? [getTokenAddressForBorrow(borrowToken) as `0x${string}`, address, PositionType.Borrowed] : undefined,
+    query: { enabled: !!getTokenAddressForBorrow(borrowToken) && !!address },
+  });
 
   // Handle borrow transaction
   const handleBorrow = async () => {
@@ -239,6 +250,11 @@ export default function BorrowForm() {
           <div className="text-xs text-muted-foreground mt-1">
             Max: {maxBorrowable} {borrowToken || ""} (~${maxBorrowableUSD.toFixed(2)})
           </div>
+          {address && (
+            <div className="text-xs text-muted-foreground mt-1">
+              Currently Borrowed: {borrowedBalance ? (Number(borrowedBalance) / 10 ** (TOKENS.find(t => t.symbol === borrowToken)?.decimals || 18)).toFixed(4) : "-"} {borrowToken || ""}
+            </div>
+          )}
         </div>
       </div>
 

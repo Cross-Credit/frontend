@@ -140,4 +140,29 @@ export function getCrossCreditAddress(chainId: number): string {
 
 //0x92d682351F0E2Bdf19f63e77e97fa8f534D8D673 faucet addrs
 
+// New utility functions for the improved ABI
+export function formatAssetDecimals(decimals: number): string {
+  return decimals.toString();
+}
+
+export function isCrossChainSupported(chainId: number): boolean {
+  // Add logic to determine if cross-chain is supported for a given chain
+  return chainId === 11155111 || chainId === 80001; // Example: Sepolia and Mumbai
+}
+
+export function getCrossChainStatus(isConnected: boolean, chainId?: number): {
+  isSupported: boolean;
+  status: 'supported' | 'not-supported' | 'not-connected';
+} {
+  if (!isConnected || !chainId) {
+    return { isSupported: false, status: 'not-connected' };
+  }
+  
+  const supported = isCrossChainSupported(chainId);
+  return {
+    isSupported: supported,
+    status: supported ? 'supported' : 'not-supported'
+  };
+}
+
 

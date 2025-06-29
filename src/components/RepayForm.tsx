@@ -8,6 +8,7 @@ import { erc20Abi } from "@/const/erc20Abi";
 import { CHAINS, TOKENS, getAvailableTokens, getCrossCreditAddress, getTokenAddress } from "@/lib/utils";
 import { useTokenPrices } from "@/lib/useTokenPrices";
 import { toast } from "sonner";
+import { PositionType } from "@/types";
 
 export default function RepayForm() {
   const [mounted, setMounted] = useState(false);
@@ -60,6 +61,15 @@ export default function RepayForm() {
     functionName: "allowance",
     args: canCheckAllowance ? [address, ABI_ADDRESS as `0x${string}`] : undefined,
     query: { enabled: canCheckAllowance },
+  });
+
+  // User borrowed balance for this token
+  const { data: borrowedBalance } = useReadContract({
+    abi,
+    address: ABI_ADDRESS as `0x${string}`,
+    functionName: "getUserPositionForAssetByType",
+    args: tokenAddress && address ? [tokenAddress as `0x${string}`, address, PositionType.Borrowed] : undefined,
+    query: { enabled: !!tokenAddress && !!address },
   });
 
   const handleRepay = async () => {
@@ -202,6 +212,11 @@ export default function RepayForm() {
           {token && amount && (
             <div className="text-xs text-muted-foreground mt-1">
               Value: ${amountUSD.toFixed(2)} USD
+            </div>
+          )}
+          {address && (
+            <div className="text-xs text-muted-foreground mt-1">
+              Borrowed: {borrowedBalance ? (Number(borrowedBalance) / 10 ** (TOKENS.find(t => t.symbol === token)?.decimals || 18)).toFixed(4) : "-"} {token}
             </div>
           )}
         </div>

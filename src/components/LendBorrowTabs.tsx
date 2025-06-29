@@ -10,7 +10,19 @@ import { useAccount } from "wagmi";
 import { toast } from "sonner";
 import { useState } from "react";
 
-export default function LendBorrowTabs() {
+interface LendBorrowTabsProps {
+  selectedChain: number;
+  onChainChange: (chainId: number) => void;
+  selectedToken: string;
+  onTokenChange: (token: string) => void;
+}
+
+export default function LendBorrowTabs({ 
+  selectedChain, 
+  onChainChange, 
+  selectedToken, 
+  onTokenChange 
+}: LendBorrowTabsProps) {
     const { address } = useAccount();
     const [tab, setTab] = useState("lend");
     const handleTabChange = (value: string) => {
@@ -30,19 +42,42 @@ export default function LendBorrowTabs() {
                 <TabsTrigger value="liquidation">LIQUIDATION</TabsTrigger>
             </TabsList>
             <TabsContent value="lend">
-                <LendForm />
+                <LendForm 
+                  selectedChain={selectedChain}
+                  onChainChange={onChainChange}
+                  selectedToken={selectedToken}
+                  onTokenChange={onTokenChange}
+                />
             </TabsContent>
             <TabsContent value="borrow">
-                <BorrowForm />
+                <BorrowForm 
+                  selectedChain={selectedChain}
+                  onChainChange={onChainChange}
+                  selectedToken={selectedToken}
+                  onTokenChange={onTokenChange}
+                />
             </TabsContent>
             <TabsContent value="liquidation">
-                <LiquidationForm />
+                <LiquidationForm 
+                  selectedChain={selectedChain}
+                  onChainChange={onChainChange}
+                />
             </TabsContent>
             <TabsContent value="unlend">
-                <UnlendForm />
+                <UnlendForm 
+                  selectedChain={selectedChain}
+                  onChainChange={onChainChange}
+                  selectedToken={selectedToken}
+                  onTokenChange={onTokenChange}
+                />
             </TabsContent>
             <TabsContent value="repay">
-                <RepayForm />
+                <RepayForm 
+                  selectedChain={selectedChain}
+                  onChainChange={onChainChange}
+                  selectedToken={selectedToken}
+                  onTokenChange={onTokenChange}
+                />
             </TabsContent>
         </Tabs>
     );

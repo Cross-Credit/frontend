@@ -1,12 +1,13 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
-import { useAccount, useChainId, useWriteContract, useSwitchChain } from "wagmi";
+import { useAccount, useChainId, useWriteContract, useSwitchChain, useReadContract } from "wagmi";
 import { parseUnits } from "viem";
 import { abi } from "@/const/abi";
 import { CHAINS, TOKENS, getAvailableTokens, getCrossCreditAddress, getTokenAddress } from "@/lib/utils";
 import { useTokenPrices } from "@/lib/useTokenPrices";
 import { toast } from "sonner";
+import { PositionType } from "@/types";
 
 export default function UnlendForm() {
   const [mounted, setMounted] = useState(false);
@@ -49,6 +50,18 @@ export default function UnlendForm() {
     return address || undefined;
   }
 
+  const tokenAddress = getTokenAddressForUnlend(token);
+  const canCheckBalance = !!tokenAddress && !!address;
+
+  // User supplied balance for this token
+  const { data: suppliedBalance } = useReadContract({
+    abi,
+    address: ABI_ADDRESS as `0x${string}`,
+    functionName: "getUserPositionForAssetByType",
+    args: canCheckBalance ? [tokenAddress as `0x${string}`, address, PositionType.Supplied] : undefined,
+    query: { enabled: canCheckBalance },
+  });
+
   const handleUnlend = async () => {
     setLoading(true);
     setError(null);
@@ -72,10 +85,15 @@ export default function UnlendForm() {
         setLoading(false);
         return;
       }
-      const tokenAddress = getTokenAddressForUnlend(token);
       if (!tokenAddress) {
         setError("Invalid token or chain.");
         toast.error("Invalid token or chain.");
+        setLoading(false);
+        return;
+      }
+      if (!ABI_ADDRESS) {
+        setError("Invalid contract address.");
+        toast.error("Invalid contract address.");
         setLoading(false);
         return;
       }
@@ -169,6 +187,11 @@ export default function UnlendForm() {
           {token && amount && (
             <div className="text-xs text-muted-foreground mt-1">
               Value: ${amountUSD.toFixed(2)} USD
+            </div>
+          )}
+          {address && (
+            <div className="text-xs text-muted-foreground mt-1">
+              Supplied: {suppliedBalance ? (Number(suppliedBalance) / 10 ** (TOKENS.find(t => t.symbol === token)?.decimals || 18)).toFixed(4) : "-"} {token}
             </div>
           )}
         </div>
