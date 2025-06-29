@@ -7,7 +7,7 @@ import {
   useSwitchChain,
 } from "wagmi";
 import { useState, useEffect } from "react";
-import { CHAINS, TOKENS, getAvailableTokens } from "@/lib/utils";
+import { CHAINS, TOKENS, getAvailableTokens, getCrossCreditAddress, getTokenAddress } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { parseUnits } from "viem";
 import { useTokenPrices } from "@/lib/useTokenPrices";
@@ -51,27 +51,16 @@ export default function BorrowForm() {
     ? (interestUSD / borrowPrice).toFixed(6)
     : "0";
 
-  const ABI_ADDRESS =
-    chainId === 11155111
-      ? "0xF91A70a47b87f4196F21ce62e35a96bb994FFa3e" // Sepolia testnet
-      : "0x146A6aeA830316aC0D7C69BcbE24Cd3dfeE2d45e"; // AvalancheFuji mainnet
+  const ABI_ADDRESS = getCrossCreditAddress(selectedChain);
 
   useEffect(() => {
     setSelectedChain(chainId);
   }, [chainId]);
 
   // Get token address for the selected borrow token and current chain
-  function getTokenAddress(symbol: string): string | undefined {
-    const token = TOKENS.find((t) => t.symbol === symbol);
-    if (!token) return undefined;
-    switch (selectedChain) {
-      case 11155111:
-        return token.addresses.sepolia;
-      case 43113:
-        return token.addresses.avalancheFuji;
-      default:
-        return undefined;
-    }
+  function getTokenAddressForBorrow(symbol: string): string | undefined {
+    const address = getTokenAddress(symbol, selectedChain);
+    return address || undefined;
   }
   // Write contract hook
   const { writeContractAsync } = useWriteContract();
@@ -100,7 +89,7 @@ export default function BorrowForm() {
         setLoading(false);
         return;
       }
-      const tokenAddress = getTokenAddress(borrowToken);
+      const tokenAddress = getTokenAddressForBorrow(borrowToken);
       if (!tokenAddress) {
         setError("Invalid token or chain.");
         toast.error("Invalid token or chain.");
@@ -113,10 +102,10 @@ export default function BorrowForm() {
       const parsedAmount = parseUnits(borrowAmount, decimals);
       setIsPending(true);
       await writeContractAsync({
-        address: ABI_ADDRESS,
+        address: ABI_ADDRESS as `0x${string}`,
         abi,
         functionName: "borrow",
-        args: [parsedAmount, tokenAddress],
+        args: [parsedAmount, tokenAddress as `0x${string}`],
       });
       setIsPending(false);
       setSuccess(true);

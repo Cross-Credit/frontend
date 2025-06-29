@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CHAINS, TOKENS, getAvailableTokens } from "@/lib/utils";
+import { CHAINS, TOKENS, getAvailableTokens, getCrossCreditAddress, getTokenAddress } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { abi } from "@/const/abi";
 import { useChainId, useAccount, useWriteContract, useSwitchChain } from "wagmi";
@@ -42,22 +42,11 @@ export default function LendForm() {
   const amountNum = parseFloat(amount) || 0;
   const amountUSD = amountNum * tokenPrice;
 
-  const ABI_ADDRESS =
-    chainId === 11155111
-      ? "0xF91A70a47b87f4196F21ce62e35a96bb994FFa3e" // Sepolia testnet
-      : "0x146A6aeA830316aC0D7C69BcbE24Cd3dfeE2d45e"; // Avalanche Fuji testnet
+  const ABI_ADDRESS = getCrossCreditAddress(selectedChain);
 
-  function getTokenAddress(symbol: string): string | undefined {
-    const t = TOKENS.find((tk) => tk.symbol === symbol);
-    if (!t) return undefined;
-    switch (selectedChain) {
-      case 11155111:
-        return t.addresses.sepolia;
-      case 43113:
-        return t.addresses.avalancheFuji;
-      default:
-        return undefined;
-    }
+  function getTokenAddressForLend(symbol: string): string | undefined {
+    const address = getTokenAddress(symbol, selectedChain);
+    return address || undefined;
   }
 
   const handleSupply = async () => {
@@ -82,7 +71,7 @@ export default function LendForm() {
         setLoading(false);
         return;
       }
-      const tokenAddress = getTokenAddress(token);
+      const tokenAddress = getTokenAddressForLend(token);
       if (!tokenAddress) {
         setError("Invalid token or chain.");
         toast.error("Invalid token or chain.");
@@ -95,10 +84,10 @@ export default function LendForm() {
       // If the token is the native asset, send value, else value is 0
       const isNative = token === "ETH";
       await writeContractAsync({
-        address: ABI_ADDRESS,
+        address: ABI_ADDRESS as `0x${string}`,
         abi,
         functionName: "lend",
-        args: [parsedAmount, tokenAddress],
+        args: [parsedAmount, tokenAddress as `0x${string}`],
         value: isNative ? parsedAmount : undefined,
       });
       setSuccess(true);

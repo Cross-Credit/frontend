@@ -1,6 +1,5 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { avalancheFuji } from "viem/chains";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -22,6 +21,11 @@ export const DEPLOYED_CONTRACTS = {
   // Chain Selectors
   ETH_SEPOLIA_CHAIN_SELECTOR: "16015286601757825753",
   AVALANCHE_FUJI_CHAIN_SELECTOR: "14767482510784806043",
+  
+  // Deployed CrossCredit Contract Addresses (Need to be updated with actual deployed addresses)
+  // These will be the addresses where the CrossCredit contracts were actually deployed
+  CROSS_CREDIT_SEPOLIA: "0xF91A70a47b87f4196F21ce62e35a96bb994FFa3e", // Temporary: Replace with actual deployed address
+  CROSS_CREDIT_AVALANCHE_FUJI: "0x146A6aeA830316aC0D7C69BcbE24Cd3dfeE2d45e", // Temporary: Replace with actual deployed address
 } as const;
 
 // Chainlink Price Feed Addresses
@@ -51,7 +55,7 @@ export const TOKENS = [
     },
     decimals: 18,
     isNative: true, // Flag for native ETH handling
-    networks: [11155111] as const, // Available on both Sepolia and Avalanche Fuji
+    networks: [11155111, 43113] as const, // Available on both Sepolia and Avalanche Fuji
     priceFeeds: {
       sepolia: PRICE_FEEDS.ETH_SEPOLIA_ETH_PRICE_FEED,
       avalancheFuji: PRICE_FEEDS.AVALANCHE_FUJI_ETH_PRICE_FEED,
@@ -66,7 +70,7 @@ export const TOKENS = [
     },
     decimals: 18,
     isNative: false, // Not native, needs to be wrapped
-    networks: [11155111, 43113] as const, // Only available on Sepolia
+    networks: [11155111, 43113] as const, // Available on both Sepolia and Avalanche Fuji (cross-chain)
     priceFeeds: {
       sepolia: PRICE_FEEDS.ETH_SEPOLIA_LINK_PRICE_FEED,
       avalancheFuji: PRICE_FEEDS.AVALANCHE_FUJI_LINK_PRICE_FEED,
@@ -76,14 +80,14 @@ export const TOKENS = [
     symbol: "AVAX",
     name: "Avalanche",
     addresses: {
-      sepolia: "", // AVAX is not natively available on Sepolia - would need bridged version
+      sepolia: null, // AVAX is not natively available on Sepolia - would need bridged version
       avalancheFuji: "0xd00ae08403B9bbb9124bB305C09058E32C39A48c", // Avalanche Fuji WAVAX address
     },
     decimals: 18,
     isNative: false, // Not native on these networks, needs to be wrapped
     networks: [43113] as const, // Only available on Avalanche Fuji
     priceFeeds: {
-      sepolia: "", // No price feed on Sepolia
+      sepolia: null, // No price feed on Sepolia
       avalancheFuji: PRICE_FEEDS.AVALANCHE_FUJI_AVAX_PRICE_FEED,
     },
   },
@@ -100,7 +104,38 @@ export function getPriceFeedAddress(tokenSymbol: string, chainId: number): strin
   if (!token) return null;
   
   const networkKey = chainId === 11155111 ? 'sepolia' : 'avalancheFuji';
-  return token.priceFeeds[networkKey] || null;
+  const priceFeed = token.priceFeeds[networkKey];
+  return priceFeed || null;
+}
+
+// Helper function to get token address for a specific network
+export function getTokenAddress(tokenSymbol: string, chainId: number): string | null {
+  const token = TOKENS.find(t => t.symbol === tokenSymbol);
+  if (!token) return null;
+  
+  const networkKey = chainId === 11155111 ? 'sepolia' : 'avalancheFuji';
+  const address = token.addresses[networkKey];
+  return address || null;
+}
+
+// Helper function to get the correct CrossCredit contract address for a network
+export function getCrossCreditAddress(chainId: number): string {
+  switch (chainId) {
+    case 11155111: // Sepolia
+      const sepoliaAddress = DEPLOYED_CONTRACTS.CROSS_CREDIT_SEPOLIA;
+      if (sepoliaAddress === "0xF91A70a47b87f4196F21ce62e35a96bb994FFa3e") {
+        console.warn("⚠️ Using temporary Sepolia contract address. Please update with actual deployed address.");
+      }
+      return sepoliaAddress;
+    case 43113: // Avalanche Fuji
+      const avalancheAddress = DEPLOYED_CONTRACTS.CROSS_CREDIT_AVALANCHE_FUJI;
+      if (avalancheAddress === "0x146A6aeA830316aC0D7C69BcbE24Cd3dfeE2d45e") {
+        console.warn("⚠️ Using temporary Avalanche Fuji contract address. Please update with actual deployed address.");
+      }
+      return avalancheAddress;
+    default:
+      throw new Error(`Unsupported chain ID: ${chainId}`);
+  }
 }
 
 //0x92d682351F0E2Bdf19f63e77e97fa8f534D8D673 faucet addrs

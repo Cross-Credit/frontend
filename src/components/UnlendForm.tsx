@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useAccount, useChainId, useWriteContract, useSwitchChain } from "wagmi";
 import { parseUnits } from "viem";
 import { abi } from "@/const/abi";
-import { CHAINS, TOKENS, getAvailableTokens } from "@/lib/utils";
+import { CHAINS, TOKENS, getAvailableTokens, getCrossCreditAddress, getTokenAddress } from "@/lib/utils";
 import { useTokenPrices } from "@/lib/useTokenPrices";
 import { toast } from "sonner";
 
@@ -42,22 +42,11 @@ export default function UnlendForm() {
     }
   }, [chainId, mounted]);
 
-  const ABI_ADDRESS =
-    chainId === 11155111
-      ? "0xF91A70a47b87f4196F21ce62e35a96bb994FFa3e" // Sepolia testnet
-      : "0x146A6aeA830316aC0D7C69BcbE24Cd3dfeE2d452"; // Avalanche Fuji testnet
+  const ABI_ADDRESS = getCrossCreditAddress(selectedChain);
   
-  function getTokenAddress(symbol: string): string | undefined {
-    const t = TOKENS.find((tk) => tk.symbol === symbol);
-    if (!t) return undefined;
-    switch (selectedChain) {
-      case 11155111:
-        return t.addresses.sepolia;
-      case 43113:
-        return t.addresses.avalancheFuji;
-      default:
-        return undefined;
-    }
+  function getTokenAddressForUnlend(symbol: string): string | undefined {
+    const address = getTokenAddress(symbol, selectedChain);
+    return address || undefined;
   }
 
   const handleUnlend = async () => {
@@ -83,7 +72,7 @@ export default function UnlendForm() {
         setLoading(false);
         return;
       }
-      const tokenAddress = getTokenAddress(token);
+      const tokenAddress = getTokenAddressForUnlend(token);
       if (!tokenAddress) {
         setError("Invalid token or chain.");
         toast.error("Invalid token or chain.");
@@ -94,10 +83,10 @@ export default function UnlendForm() {
       const decimals = t?.decimals || 18;
       const parsedAmount = parseUnits(amount, decimals);
       await writeContractAsync({
-        address: ABI_ADDRESS,
+        address: ABI_ADDRESS as `0x${string}`,
         abi,
         functionName: "unlend",
-        args: [parsedAmount, tokenAddress],
+        args: [parsedAmount, tokenAddress as `0x${string}`],
       });
       setSuccess(true);
       toast.success("Unlend successful!");
