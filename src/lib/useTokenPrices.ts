@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getPriceFeedAddress } from "./utils";
+import { readContract } from 'wagmi/actions';
 
 // Chainlink Price Feed ABI (minimal for getting latest price)
 const PRICE_FEED_ABI = [
@@ -26,7 +27,6 @@ export function useTokenPrices(symbols: string[], chainId?: number) {
 
     async function fetchPrices() {
       const result: Record<string, number> = {};
-      
       for (const symbol of symbols) {
         try {
           const priceFeedAddress = getPriceFeedAddress(symbol, chainId as number);
@@ -35,25 +35,20 @@ export function useTokenPrices(symbols: string[], chainId?: number) {
             result[symbol] = 0;
             continue;
           }
-
-          // For now, we'll use a fallback to CoinGecko if Chainlink price feed fails
-          // In production, you should implement proper Chainlink price feed reading
-          const coingeckoId = getCoingeckoId(symbol);
-          if (coingeckoId) {
-            const response = await fetch(
-              `https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`
-            );
-            const data = await response.json();
-            result[symbol] = data[coingeckoId]?.usd ?? 0;
-          } else {
-            result[symbol] = 0;
-          }
+          // Read from Chainlink price feed contract
+          const data = await readContract({
+            address: priceFeedAddress as `0x${string}`,
+            abi: PRICE_FEED_ABI,
+            functionName: 'latestRoundData',
+            chainId,
+          });
+          // Chainlink prices are in 8 decimals
+          result[symbol] = Number(data[1]) / 1e8;
         } catch (error) {
-          console.error(`Error fetching price for ${symbol}:`, error);
+          console.error(`Error fetching Chainlink price for ${symbol}:`, error);
           result[symbol] = 0;
         }
       }
-      
       setPrices(result);
     }
 
