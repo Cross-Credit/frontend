@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getPriceFeedAddress } from "./utils";
 import { readContract } from 'wagmi/actions';
+import wagmiConfig from '../rainbowKitConfig';
 
 // Chainlink Price Feed ABI (minimal for getting latest price)
 const PRICE_FEED_ABI = [
@@ -36,14 +37,21 @@ export function useTokenPrices(symbols: string[], chainId?: number) {
             continue;
           }
           // Read from Chainlink price feed contract
-          const data = await readContract({
-            address: priceFeedAddress as `0x${string}`,
-            abi: PRICE_FEED_ABI,
-            functionName: 'latestRoundData',
-            chainId,
-          });
+          const data = await readContract(
+            wagmiConfig,
+            {
+              address: priceFeedAddress as `0x${string}`,
+              abi: PRICE_FEED_ABI,
+              functionName: 'latestRoundData',
+              chainId: chainId as 11155111 | 43113 | undefined,
+            }
+          ) as [bigint, bigint, bigint, bigint, bigint] | any[];
           // Chainlink prices are in 8 decimals
-          result[symbol] = Number(data[1]) / 1e8;
+          if (Array.isArray(data) && typeof data[1] !== 'undefined') {
+            result[symbol] = Number(data[1]) / 1e8;
+          } else {
+            result[symbol] = 0;
+          }
         } catch (error) {
           console.error(`Error fetching Chainlink price for ${symbol}:`, error);
           result[symbol] = 0;
@@ -58,16 +66,6 @@ export function useTokenPrices(symbols: string[], chainId?: number) {
   }, [symbols, chainId]);
 
   return prices;
-}
-
-// Fallback mapping for CoinGecko IDs
-function getCoingeckoId(symbol: string): string | null {
-  const mapping: Record<string, string> = {
-    ETH: "ethereum",
-    LINK: "chainlink",
-    AVAX: "avalanche-2"
-  };
-  return mapping[symbol] || null;
 }
 
 // TODO: Implement proper Chainlink price feed reading
