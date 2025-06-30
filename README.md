@@ -164,6 +164,60 @@ graph TD
 - Cross-chain support status
 - Asset metadata and whitelist status
 
+## 🟢 How Chainlink Makes This App Functional
+
+This app leverages **Chainlink Price Feeds** to fetch real-time, decentralized, and tamper-resistant USD prices for all supported tokens (ETH, LINK, AVAX) directly on-chain.
+- **Why is this important?**
+  - All lending, borrowing, and un-lending operations depend on accurate, up-to-date asset prices to determine collateral values, borrowing limits, and liquidation thresholds.
+  - By using Chainlink, the app ensures that all price-sensitive logic (like LTV calculations and position health) is based on the same data as the smart contracts, eliminating price manipulation risks and off-chain discrepancies.
+- **How is it used?**
+  - The frontend fetches prices from Chainlink price feed contracts on the blockchain (not from centralized APIs).
+  - The smart contracts also use Chainlink price feeds for all internal calculations.
+  - This guarantees that what the user sees in the UI matches the contract's logic and state.
+
+---
+
+## 📝 User Flow: Lending, Borrowing, Repaying, and Unlending
+
+### LendForm (Supplying Assets)
+- **Select a chain and token** (ETH, LINK, or AVAX, depending on the network).
+- **Enter the amount** you want to supply.
+- The app checks your wallet connection, network, and token allowance.
+- If you're supplying an ERC20 token, the app will prompt for approval if needed.
+- Once approved, you can supply assets to the protocol.
+- **Chainlink price feeds** are used to show the USD value of your supplied amount in real time.
+
+### BorrowForm (Borrowing Against Collateral)
+- **Select a chain, collateral token, and borrow token.**
+- **Enter the amount** you want to borrow.
+- The app checks your wallet connection, network, and ensures you have enough collateral supplied.
+- The maximum borrowable amount is calculated using the on-chain LTV ratio and your supplied collateral, both valued using Chainlink price feeds.
+- You can borrow up to the protocol's allowed limit, and the UI will show your position health and interest rate.
+- The borrow transaction is sent to the smart contract, and your position is updated.
+
+### RepayForm (Repaying Borrowed Assets)
+- **Select the chain and token** you want to repay.
+- **Enter the amount** to repay.
+- The app checks your wallet connection, network, and token allowance.
+- If you're repaying an ERC20 token, the app will prompt for approval if needed.
+- Once approved, you can repay your debt, and your position is updated accordingly.
+- The UI uses Chainlink price feeds to show the USD value of your repayment.
+
+### UnlendForm (Withdrawing Supplied Assets)
+- **Select the chain and token** you want to withdraw.
+- **Enter the amount** to unlend.
+- The app checks your wallet connection, network, and ensures you have enough supplied balance.
+- The withdrawal is processed, and your position is updated.
+- The UI uses Chainlink price feeds to show the USD value of your withdrawal.
+
+---
+
+**Note:**
+- All forms provide real-time feedback, error handling, and transaction status updates.
+- The app ensures that all user actions are validated both on the frontend and by the smart contract, using the same price data from Chainlink.
+
+---
+
 ## 🔐 Security Features
 
 - **Allowance Management**: Automatic ERC20 token approval with proper validation
