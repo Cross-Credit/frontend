@@ -24,8 +24,8 @@ export const DEPLOYED_CONTRACTS = {
   
   // Deployed CrossCredit Contract Addresses (Need to be updated with actual deployed addresses)
   // These will be the addresses where the CrossCredit contracts were actually deployed
-  CROSS_CREDIT_SEPOLIA: "0xF91A70a47b87f4196F21ce62e35a96bb994FFa3e", // Temporary: Replace with actual deployed address
-  CROSS_CREDIT_AVALANCHE_FUJI: "0x146A6aeA830316aC0D7C69BcbE24Cd3dfeE2d45e", // Temporary: Replace with actual deployed address
+  CROSS_CREDIT_SEPOLIA: "0x883B1acd783a66b543b1d4Ee965372B8EaA2d430", // Updated: Actual deployed address
+  CROSS_CREDIT_AVALANCHE_FUJI: "0xEA084C9e33B3aC71bCC4788A549B2905f26BfFb2", // Updated: Actual deployed address
 } as const;
 
 // Chainlink Price Feed Addresses
@@ -123,13 +123,13 @@ export function getCrossCreditAddress(chainId: number): string {
   switch (chainId) {
     case 11155111: // Sepolia
       const sepoliaAddress = DEPLOYED_CONTRACTS.CROSS_CREDIT_SEPOLIA;
-      if (sepoliaAddress === "0xF91A70a47b87f4196F21ce62e35a96bb994FFa3e") {
+      if (sepoliaAddress === "0x883B1acd783a66b543b1d4Ee965372B8EaA2d430") {
         console.warn("⚠️ Using temporary Sepolia contract address. Please update with actual deployed address.");
       }
       return sepoliaAddress;
     case 43113: // Avalanche Fuji
       const avalancheAddress = DEPLOYED_CONTRACTS.CROSS_CREDIT_AVALANCHE_FUJI;
-      if (avalancheAddress === "0x146A6aeA830316aC0D7C69BcbE24Cd3dfeE2d45e") {
+      if (avalancheAddress === "0xEA084C9e33B3aC71bCC4788A549B2905f26BfFb2") {
         console.warn("⚠️ Using temporary Avalanche Fuji contract address. Please update with actual deployed address.");
       }
       return avalancheAddress;
