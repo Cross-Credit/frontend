@@ -13,7 +13,7 @@ interface ChainStatusProps {
 
 export default function ChainStatus({ selectedChain }: ChainStatusProps) {
   const { address, isConnected } = useAccount();
-  const chainId = useChainId();
+    const chainId = useChainId();
   const ABI_ADDRESS = getCrossCreditAddress(selectedChain);
   
   // Get cross-chain status
@@ -51,7 +51,7 @@ export default function ChainStatus({ selectedChain }: ChainStatusProps) {
     query: { enabled: !!ABI_ADDRESS },
   });
 
-  return (
+    return (
     <div className="bg-card border rounded-lg p-4 mb-4">
       <h3 className="text-lg font-semibold mb-3">Chain Status</h3>
       
@@ -108,6 +108,6 @@ export default function ChainStatus({ selectedChain }: ChainStatusProps) {
           </span>
         </div>
       </div>
-    </div>
-  );
+        </div>
+    );
 } 

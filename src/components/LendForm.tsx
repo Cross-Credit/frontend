@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { CHAINS, TOKENS, getAvailableTokens, getCrossCreditAddress, getTokenAddress } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { abi } from "@/const/abi";
-import { useChainId, useAccount, useWriteContract, useSwitchChain, useReadContract } from "wagmi";
+import { useChainId, useAccount, useWriteContract, useSwitchChain, useReadContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseUnits } from "viem";
 import { useTokenPrices } from "@/lib/useTokenPrices";
 import { toast } from "sonner";
@@ -36,7 +36,33 @@ export default function LendForm({
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingTxHash, setPendingTxHash] = useState<string | null>(null);
   const { writeContractAsync } = useWriteContract();
+
+  // Monitor transaction status
+  const { isLoading: isConfirming, isSuccess: isConfirmed, isError: isFailed } = useWaitForTransactionReceipt({
+    hash: pendingTxHash as `0x${string}` | undefined,
+  });
+
+  // Handle transaction success
+  useEffect(() => {
+    if (isConfirmed && pendingTxHash) {
+      setSuccess(true);
+      setPendingTxHash(null);
+      toast.success("Transaction confirmed! Supply successful!");
+      setTimeout(() => setSuccess(false), 5000);
+    }
+  }, [isConfirmed, pendingTxHash]);
+
+  // Handle transaction error
+  useEffect(() => {
+    if (isFailed && pendingTxHash) {
+      console.error("Transaction failed");
+      setError("Transaction failed on-chain. Please check your wallet for details.");
+      setPendingTxHash(null);
+      toast.error("Transaction failed on-chain. Please check your wallet for details.");
+    }
+  }, [isFailed, pendingTxHash]);
 
   useEffect(() => {
     // Set initial token only after mounting
@@ -80,10 +106,29 @@ export default function LendForm({
     query: { enabled: !!tokenAddress && !!address },
   });
 
+  // Check if contract is accessible
+  const { data: contractOwner, isError: contractError } = useReadContract({
+    abi,
+    address: ABI_ADDRESS as `0x${string}`,
+    functionName: "owner",
+    query: { enabled: !!ABI_ADDRESS },
+  });
+
+  // Check if asset is whitelisted
+  const { data: isWhitelisted } = useReadContract({
+    abi,
+    address: ABI_ADDRESS as `0x${string}`,
+    functionName: "isAssetWhitelisted",
+    args: tokenAddress ? [tokenAddress as `0x${string}`] : undefined,
+    query: { enabled: !!ABI_ADDRESS && !!tokenAddress },
+  });
+
   const handleSupply = async () => {
     setLoading(true);
     setError(null);
     setSuccess(false);
+    setPendingTxHash(null);
+    
     try {
       if (!address) {
         toast.error("Please connect your wallet to use this feature.");
@@ -122,32 +167,59 @@ export default function LendForm({
         setLoading(false);
         return;
       }
+
       const t = TOKENS.find((tk) => tk.symbol === selectedToken);
       const decimals = t?.decimals || 18;
       const parsedAmount = parseUnits(amount, decimals);
+
       // Check allowance and approve if needed (for ERC20 only)
       if (!isNative) {
         await refetchAllowance();
         if (!allowance || BigInt(allowance) < BigInt(parsedAmount)) {
-          await writeContractAsync({
-            address: tokenAddress as `0x${string}`,
-            abi: erc20Abi,
-            functionName: "approve",
-            args: [ABI_ADDRESS as `0x${string}`, parsedAmount],
-          });
-          toast.success("Token approved!");
+          toast.info("Approving token...");
+          try {
+      await writeContractAsync({
+              address: tokenAddress as `0x${string}`,
+              abi: erc20Abi,
+              functionName: "approve",
+              args: [ABI_ADDRESS as `0x${string}`, parsedAmount],
+            });
+            toast.success("Token approved! Please wait a moment and try the supply again.");
+            setLoading(false);
+            return; // Let user try again after approval
+          } catch (approveErr) {
+            console.error("Approval error:", approveErr);
+            toast.error("Token approval failed. Please try again.");
+            setLoading(false);
+            return;
+          }
         }
       }
-      await writeContractAsync({
+
+      // Execute lend transaction
+      toast.info("Executing lend transaction...");
+      
+      // Debug logging
+      console.log("Lend transaction parameters:", {
+        contractAddress: ABI_ADDRESS,
+        tokenAddress: tokenAddress,
+        amount: parsedAmount.toString(),
+        isNative,
+        value: isNative ? parsedAmount : undefined
+      });
+      
+      const lendTx = await writeContractAsync({
         address: ABI_ADDRESS as `0x${string}`,
         abi,
         functionName: "lend",
         args: [parsedAmount, tokenAddress as `0x${string}`],
         value: isNative ? parsedAmount : undefined,
       });
-      setSuccess(true);
-      toast.success("Supply successful!");
-      setTimeout(() => setSuccess(false), 2000);
+      
+      console.log("Transaction hash:", lendTx);
+      setPendingTxHash(lendTx);
+      toast.info("Transaction submitted! Waiting for confirmation...");
+      
     } catch (err: unknown) {
       console.error("Supply error:", err);
       let errorMsg = "Transaction failed";
@@ -166,6 +238,9 @@ export default function LendForm({
         } else if (err.message.includes("gas") || 
                    err.message.includes("fee")) {
           errorMsg = "Gas estimation failed. Please try with a smaller amount.";
+        } else if (err.message.includes("execution reverted") ||
+                   err.message.includes("revert")) {
+          errorMsg = "Transaction reverted. This might be due to insufficient balance, invalid parameters, or contract restrictions.";
         } else {
           errorMsg = err.message;
         }
@@ -173,6 +248,7 @@ export default function LendForm({
       
       setError(errorMsg);
       toast.error(errorMsg);
+      setPendingTxHash(null);
     } finally {
       setLoading(false);
     }
@@ -262,6 +338,21 @@ export default function LendForm({
         )}
       </div>
 
+      {/* Transaction Status */}
+      {pendingTxHash && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+            <span className="text-sm text-blue-800">
+              {isConfirming ? "Confirming transaction..." : "Transaction submitted! Waiting for confirmation..."}
+            </span>
+          </div>
+          <p className="text-xs text-blue-600 mt-1">
+            Hash: {pendingTxHash.slice(0, 10)}...{pendingTxHash.slice(-8)}
+          </p>
+        </div>
+      )}
+
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3">
           <p className="text-sm text-red-800">{error}</p>
@@ -274,13 +365,56 @@ export default function LendForm({
         </div>
       )}
 
+      {/* Debug Information */}
+      {/* <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+        <p className="text-xs text-gray-600 mb-2">Debug Info:</p>
+        <p className="text-xs text-gray-600">Contract: {ABI_ADDRESS}</p>
+        <p className="text-xs text-gray-600">Token: {tokenAddress}</p>
+        <p className="text-xs text-gray-600">Chain: {selectedChain}</p>
+        <p className="text-xs text-gray-600">Wallet Chain: {chainId}</p>
+        <p className="text-xs text-gray-600">Is Native: {isNative ? 'Yes' : 'No'}</p>
+        {!isNative && allowance !== undefined && (
+          <p className="text-xs text-gray-600">Allowance: {allowance.toString()}</p>
+        )}
+        <p className="text-xs text-gray-600">Contract Accessible: {contractError ? 'No' : 'Yes'}</p>
+        {contractOwner && (
+          <p className="text-xs text-gray-600">Contract Owner: {contractOwner}</p>
+        )}
+        {isWhitelisted !== undefined && (
+          <p className="text-xs text-gray-600">Asset Whitelisted: {isWhitelisted ? 'Yes' : 'No'}</p>
+        )}
+      </div> */}
+
+      {/* Contract Status Warnings */}
+      {contractError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+            <span className="text-sm text-red-800">
+              ⚠️ Contract not accessible. The contract address might be incorrect or the contract might not be deployed.
+            </span>
+          </div>
+        </div>
+      )}
+      
+      {/* {isWhitelisted === false && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+            <span className="text-sm text-orange-800">
+              ⚠️ Asset not whitelisted. This token might not be supported by the contract.
+            </span>
+          </div>
+      </div>
+      )} */}
+
       <Button
         type="button"
         onClick={handleSupply}
-        disabled={loading || !amount || amountNum <= 0}
+        disabled={loading || !amount || amountNum <= 0 || isConfirming}
         className="w-full"
       >
-        {loading ? "Processing..." : "Supply"}
+        {loading ? "Processing..." : isConfirming ? "Confirming..." : "Supply"}
       </Button>
     </form>
   );

@@ -24,7 +24,7 @@ export interface Transaction {
 
 export interface Wallet {
     address: string;
-}
+} 
 
 export enum PositionType {
   Supplied = 0,

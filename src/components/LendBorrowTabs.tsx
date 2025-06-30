@@ -50,34 +50,16 @@ export default function LendBorrowTabs({
                 />
             </TabsContent>
             <TabsContent value="borrow">
-                <BorrowForm 
-                  selectedChain={selectedChain}
-                  onChainChange={onChainChange}
-                  selectedToken={selectedToken}
-                  onTokenChange={onTokenChange}
-                />
+                <BorrowForm />
             </TabsContent>
             <TabsContent value="liquidation">
-                <LiquidationForm 
-                  selectedChain={selectedChain}
-                  onChainChange={onChainChange}
-                />
+                <LiquidationForm />
             </TabsContent>
             <TabsContent value="unlend">
-                <UnlendForm 
-                  selectedChain={selectedChain}
-                  onChainChange={onChainChange}
-                  selectedToken={selectedToken}
-                  onTokenChange={onTokenChange}
-                />
+                <UnlendForm />
             </TabsContent>
             <TabsContent value="repay">
-                <RepayForm 
-                  selectedChain={selectedChain}
-                  onChainChange={onChainChange}
-                  selectedToken={selectedToken}
-                  onTokenChange={onTokenChange}
-                />
+                <RepayForm />
             </TabsContent>
         </Tabs>
     );
